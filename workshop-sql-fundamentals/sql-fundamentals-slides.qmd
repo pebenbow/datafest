@@ -1,0 +1,114 @@
+---
+title:       "SQL Fundamentals"
+subtitle:    "DataFest 2025"
+author:      "Pete Benbow '07"
+date:        "Apr 5, 2025"
+date-format: "long"
+institute:   "Davidson College"
+logo:        "images/davidson-wordmark-horizontal-lockup-black.png"
+format:
+  revealjs:
+    lightbox:     true
+    theme:        slides.scss
+    transition:   fade
+    slide-number: true
+    chalkboard:   true
+editor: visual
+execute:
+  freeze: auto
+  echo:   true
+---
+
+## Quick Intro
+
+::::: columns
+::: {.column width="70%"}
+**Pete Benbow '07**
+
+James B. Duke Assistant Professor of the Practice in Data Science
+
+Courses taught:
+
+-   CSC 110: Data Science & Society
+-   **DAT 153: Database Programming**
+-   DAT 211: Data Integration & Analytics [^1]
+:::
+
+::: {.column width="25%"}
+![](images/pete.png)
+:::
+:::::
+
+[^1]: As of Spring 2026
+
+## What is SQL?
+
+**Structured Query Language (SQL)** is one of the most ubiquitous programming languages in the world of data. Invented in the 1970s, it is the dominant language for interacting with **relational databases**.
+
+## How popular is SQL?
+
+![](images/stackoverflow-2024-most-popular-tech.png)
+
+::: footer
+Source: https://survey.stackoverflow.co/2024/technology
+:::
+
+## What is a relational database?
+
+There are different kinds of databases, but **relational databases** are by far the most universally adopted. You will find them at almost every enterprise, non-profit, government agency, or academic institution in existence.
+
+Relational databases store data in rigidly-structured **tables** (*relations*) consisting of **rows** (*tuples*) and **columns** (*attributes*).
+
+## What makes a database relational?
+
+::::: columns
+::: {.column width="35%"}
+Tables within a relational database can be connected (related) to each other through the use of shared attributes/columns called **keys**.
+:::
+
+::: {.column width="65%"}
+![](images/db-diagram-example.png)
+:::
+:::::
+
+## Many flavors of databases
+
+![](images/stackoverflow-2024-most-popular-db.png)
+
+::: footer
+Source: https://survey.stackoverflow.co/2024/technology
+:::
+
+## Where does SQL fit in?
+
+-   In the real world, data scientists often need to retrieve data from the source database or a data warehouse, which means using SQL.
+-   SQL has no data viz capabilities, and its statistical functions are limited, so Python and R are still critical components of the data science toolkit.
+-   However, mastering SQL helps data scientists bridge the gap between where the data is stored and the environment they are using for analysis.
+
+## Using R with SQL
+
+```{r}
+#| eval: false
+
+db <- connections::connection_open(
+  RPostgres::Postgres(),
+  dbname   = "myDatabase",
+  host     = "myServer", 
+  port     = 5432,
+  user     = "myUsername",
+  password = Sys.getenv("myPassword")
+)
+
+sql_data <- DBI::dbGetQuery(
+  conn      = db, 
+  statement = "SELECT column1, column2 FROM someTable;"
+)
+```
+
+## Take-aways
+
+-   SQL is one of the most popular and useful programming languages in the world.
+-   However, not enough data scientists are familiar with it.
+-   It forms part of a trifecta of languages we think all data science students should learn: **Python, R, and SQL**.
+
+# Workshop

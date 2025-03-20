@@ -1,0 +1,599 @@
+---
+title: "SQL Fundamentals Workshop"
+output:
+  learnr::tutorial:
+    progressive: true
+    allow_skip: false
+runtime: shiny_prerendered
+description: >
+  Learn how to write tutorials with interactive SQL exercises.
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(tidyverse)
+library(WDI)
+library(countrycode)
+library(RSQLite)
+library(DBI)
+if (!rlang::is_installed("gradethis", version = "0.2.6.9000")) {
+  stop("Please install `gradethis` from GitHub (rstudio/gradethis) for this example.")
+}
+library(gradethis)
+
+wdi <- WDI::WDI(country = "all", start=2023, end=2023, extra=TRUE, indicator="SP.POP.TOTL") %>%
+  filter(region != "Aggregates") %>%
+  rename(population = `SP.POP.TOTL`) %>%
+  select(country:latitude & !status)
+
+db_con <- DBI::dbConnect(RSQLite::SQLite(), dbname = ":memory:")
+DBI::dbWriteTable(db_con, "tblCountries", wdi)
+
+tutorial_options(exercise.eval = FALSE)
+new_recorder <- function(tutorial_id, tutorial_version, user_id, event, data) {
+  cat(tutorial_id, user_id, event, data$sectionId, data$label, data$answers, data$correct, "\n", sep = "|")
+}
+
+options(tutorial.event_recorder = new_recorder)
+```
+
+## Basic SELECT syntax
+
+The most common type of SQL operation you will perform in this class is
+to retrieve data from a table or set of tables. This kind of operation,
+known as a **query**, involves writing a structured code statement that
+is broken down into elements known as **clauses**, and each clause is
+initiated with a keyword.
+
+For retrieving data, there are two clauses that are required: `SELECT`
+and `FROM`, and they are written in that order:
+
+``` markdown
+SELECT
+  column1,
+  column2
+FROM 
+  someTable;
+```
+
+For this exercise, we're going to use a sample database with a single
+table named `tblCountries` with the following columns:
+
+| index | columnName  | columnDescription                                |
+|:------|:------------|:-------------------------------------------------|
+| 0     | country     | The name of the country                          |
+| 1     | iso2c       | The country's 2-digit ISO code                   |
+| 2     | iso3c       | The country's 3-digit ISO code                   |
+| 3     | year        | The year for which the data was gathered         |
+| 4     | population  | Total country population                         |
+| 6     | lastupdated | The date on which the data was last updated      |
+| 7     | region      | The world region in which the country is located |
+| 8     | capital     | The country's capital city                       |
+| 9     | longitude   | Longitude of the country's geographic center     |
+| 10    | latitude    | Latitude of the country's geographic center      |
+
+## SELECT
+
+### SELECT exercise 1
+
+Your goal is to query the `tblCountries` table and return only the
+columns named `country`, `region`, `capital`, and `population`.
+
+```{sql db-exSelect1, exercise = TRUE, connection = "db_con", output.var="my_result", exercise.reveal_solution = FALSE}
+
+```
+
+```{sql db-exSelect1-solution}
+SELECT
+  country,
+  region,
+  capital,
+  population
+FROM 
+  tblCountries;
+```
+
+```{r db-exSelect1-check}
+grade_this({
+  .solution <- DBI::dbGetQuery(db_con, .solution_code)
+  
+  cols_expected <- c("country", "region", "capital", "population")
+
+  for (column in cols_expected) {
+    if (!column %in% names(.result)) {
+      fail("Did you forget to include `{column}`?")
+    }
+  }
+
+  extra_cols <- setdiff(names(.result), cols_expected)
+  if (length(extra_cols)) {
+    extra_cols <- knitr::combine_words(extra_cols, and = " or ", before = "`")
+    fail("You don't need the columns {extra_cols}.")
+  }
+
+  pass_if_equal()
+  fail()
+})
+  
+```
+
+## ORDER BY
+
+It's often desirable to arrange (or sort) the data in a specific order.
+This can help us with analyzing the data, finding anomalous rows we
+might want to filter out, or prepping it for other downstream activities
+like visualizing it or loading it into another system.
+
+The `ORDER BY` clause is what we can use to sort our results by a
+column, or a list of columns.
+
+``` markdown
+SELECT
+  column1,
+  column2
+FROM 
+  someTable
+ORDER BY
+  column1;
+```
+
+### ORDER BY exercise 1
+
+Using the same query as before, arrange the results by `population`.
+
+```{sql db-exOrderBy1, exercise = TRUE, connection = "db_con", output.var="my_result", exercise.reveal_solution = FALSE}
+SELECT
+  country,
+  region,
+  capital,
+  population
+FROM 
+  tblCountries;
+  
+```
+
+```{sql db-exOrderBy1-solution}
+SELECT
+  country,
+  region,
+  capital,
+  population
+FROM 
+  tblCountries
+ORDER BY
+  population;
+```
+
+```{r db-exOrderBy1-check}
+grade_this({
+  .solution <- DBI::dbGetQuery(db_con, .solution_code)
+  # # if (unique(.solution$year) == "2023") {
+  # #   fail("Did you remember to select only data from the year 2023?")
+  # # }
+
+  pass_if_equal()
+  fail()
+})
+
+  
+```
+
+### ORDER BY exercise 2
+
+In the last example, you noticed that using `ORDER BY population` caused
+the query results to sort by the `population` column in ascending order.
+What if we want to go the other way?
+
+Well, you can sort results in **descending** order by tacking on the
+`DESC` operator at the end of your `ORDER BY` clause:
+
+``` markdown
+SELECT
+  column1,
+  column2
+FROM 
+  someTable
+ORDER BY
+  column1 DESC;
+```
+
+You can also explicitly tell the query to sort results in ascending
+order by using `ASC`. If you do not specify either `ASC` or `DESC`, the
+database will sort in ascending order by default.
+
+Starting from scratch, select all countries and arrange the results 
+by population **in descending order**. Your results should only include the
+columns `country`, `region`, and `population`.
+
+```{sql db-exOrderBy2, exercise = TRUE, connection = "db_con", output.var="my_result", exercise.reveal_solution = FALSE}
+
+```
+
+```{sql db-exOrderBy2-solution}
+SELECT 
+  country, 
+  region, 
+  population
+FROM 
+  tblCountries
+ORDER BY
+  population DESC;
+```
+
+```{r db-exOrderBy2-check}
+grade_this({
+  .solution <- DBI::dbGetQuery(db_con, .solution_code)
+
+  # # if (unique(.solution$year) == "2023") {
+  # #   fail("Did you remember to select only data from the year 2023?")
+  # # }
+
+  pass_if_equal()
+  fail()
+})
+  
+```
+
+### ORDER BY exercise 3
+
+It's also possible to sort your data by multiple columns. To do so,
+simply add more columns to the `ORDER BY` clause, separating them with
+commas.
+
+In this next exercise, select all countries and arrange the results 
+(1) alphabetically by region **in ascending order** ⬇️, and 
+(2) by population **in descending order** ⬆️.
+Your result should only include the columns `country`, `region`, and
+`population`.
+
+```{sql db-exOrderBy3, exercise = TRUE, connection = "db_con", output.var="my_result", exercise.reveal_solution = FALSE}
+
+```
+
+```{sql db-exOrderBy3-solution}
+SELECT 
+  country, 
+  region, 
+  population
+FROM 
+  tblCountries
+ORDER BY
+  region ASC,
+  population DESC;
+```
+
+```{r db-exOrderBy3-check}
+grade_this({
+  .solution <- DBI::dbGetQuery(db_con, .solution_code)
+
+  # # if (unique(.solution$year) == "2023") {
+  # #   fail("Did you remember to select only data from the year 2023?")
+  # # }
+
+  pass_if_equal()
+  fail()
+})
+  
+```
+
+## SELECT DISTINCT
+
+In data management terminology, the **grain** of a dataset (or
+**granularity**) refers to the level of detail at which the data is
+stored. For example, in the case of our population table, the data is
+stored at a **grain** of "one row per country per year."
+
+Suppose we want to return a list of the **distinct** countries in our
+table. If we just write `SELECT country FROM tblPopulation`, this will
+not produce the intended result because there are repeating values in
+the `country` column.
+
+Instead, we need to supplement our `SELECT` clause with the `DISTINCT`
+operator:
+
+``` markdown
+SELECT DISTINCT
+  column1
+FROM 
+  someTable;
+```
+
+### SELECT DISTINCT exercise 1
+
+Retrieve a list of all distinct regions, and arrange them in ascending
+alphabetical order.
+
+```{sql db-exSelectDistinct1, exercise = TRUE, connection = "db_con", output.var="my_result", exercise.reveal_solution = FALSE}
+
+```
+
+```{sql db-exSelectDistinct1-solution}
+SELECT DISTINCT
+  region
+FROM 
+  tblCountries
+ORDER BY
+  region;
+```
+
+```{r db-exSelectDistinct1-check}
+grade_this({
+  .solution <- DBI::dbGetQuery(db_con, .solution_code)
+
+  # # if (unique(.solution$year) == "2023") {
+  # #   fail("Did you remember to select only data from the year 2023?")
+  # # }
+
+  pass_if_equal()
+  fail()
+})
+  
+```
+
+### SELECT DISTINCT exercise 2
+
+We can reference multiple columns inside a `SELECT DISTINCT` clause, but
+it may not return the intended results, so be careful when doing this.
+
+To illustrate what happens, write a query below that returns the
+distinct values for both the `country` and `region` columns, and arrange
+the results in ascending order for both columns:
+
+```{sql db-exSelectDistinct2, exercise = TRUE, connection = "db_con", output.var="my_result", exercise.reveal_solution = FALSE}
+
+```
+
+```{sql db-exSelectDistinct2-solution}
+SELECT DISTINCT
+  country,
+  region
+FROM 
+  tblCountries
+ORDER BY
+  country,
+  region;
+```
+
+```{r db-exSelectDistinct2-check}
+grade_this({
+  .solution <- DBI::dbGetQuery(db_con, .solution_code)
+
+  # # if (unique(.solution$year) == "2023") {
+  # #   fail("Did you remember to select only data from the year 2023?")
+  # # }
+
+  pass_if_equal()
+  fail()
+})
+  
+```
+
+### SELECT DISTINCT wrap-up
+
+As you can see, using `SELECT DISTINCT` with multiple columns will
+return every distinct combination of those columns. Make sure that's
+what you intend!
+
+## WHERE
+
+It is almost always the case that we will need to remove data from our
+query results through filtering. There are a few different ways to
+filter data in SQL, but the most fundamental way is by employing the
+`WHERE` clause to filter columns.
+
+This clause gets added to your query after the `FROM` clause, and allows
+you to use various operators for comparison and matching. For example,
+returning all rows that equal a particular value is as easy as using an
+equals sign (=).
+
+``` markdown
+SELECT
+  column1,
+  column2
+FROM 
+  someTable
+WHERE
+  column1 = 'someValue'
+```
+
+### WHERE exercise 1
+
+Select all countries in the Middle East & North Africa region. Your result
+should only include the columns `country`, `region`, and `population`.
+Arrange the results in descending order by population.
+
+```{sql db-exWhere1, exercise = TRUE, connection = "db_con", output.var="my_result", exercise.reveal_solution = FALSE}
+
+```
+
+```{sql db-exWhere1-solution}
+SELECT 
+  country, 
+  region, 
+  population
+FROM 
+  tblCountries
+WHERE 
+  region = 'Middle East & North Africa'
+ORDER BY
+  population DESC;
+```
+
+```{r db-exWhere1-check}
+grade_this({
+  .solution <- DBI::dbGetQuery(db_con, .solution_code)
+
+  # # if (unique(.solution$year) == "2023") {
+  # #   fail("Did you remember to select only data from the year 2023?")
+  # # }
+
+  pass_if_equal()
+  fail()
+})
+  
+```
+
+### WHERE exercise 2
+
+Of course, there are other operators we can use besides the equals sign
+to run comparisons for filtering purposes. As you know from our
+Practical SQL reading (pg 36), there are several more ways we can
+compare and match data for the purpose of narrowing down our results.
+Let's explore some of these in the next few exercises.
+
+Retrieve a list of all distinct countries that are NOT Afghanistan,
+arranged in ascending alphabetical order.
+
+**NOTE: you can use either `<>` or `!=` to perform a not-equals
+comparison.**
+
+```{sql db-exWhere2, exercise = TRUE, connection = "db_con", output.var="my_result", exercise.reveal_solution = FALSE}
+
+```
+
+```{sql db-exWhere2-solution}
+SELECT DISTINCT
+  country
+FROM 
+  tblPopulation
+WHERE 
+  country <> 'Afghanistan'
+ORDER BY
+  country ASC
+```
+
+```{r db-exWhere2-check}
+grade_this({
+  .solution <- DBI::dbGetQuery(db_con, .solution_code)
+
+  pass_if_equal()
+  fail()
+})
+  
+```
+
+### WHERE exercise 3
+
+When specifying multiple filter criteria in your `WHERE` clause, you
+need to rely on the `AND` and `OR` operators to construct the logical
+basis on which the database engine can determine which rows to keep or
+remove.
+
+With this mind, write a new query that retrieves a list of countries
+that had a population greater than 150 million in the year 2000. Include
+the columns `country`, `year`, and `population`.
+
+NOTE: you do not need to use `DISTINCT` for this because your query
+should return results at a grain of one row per country.
+
+```{sql db-exWhere3, exercise = TRUE, connection = "db_con", output.var="my_result", exercise.reveal_solution = FALSE}
+
+```
+
+```{sql db-exWhere3-solution}
+SELECT 
+  country,
+  year,
+  population
+FROM 
+  tblPopulation
+WHERE 
+  population > 150000000
+  AND year = 2000
+```
+
+```{r db-exWhere3-check}
+grade_this({
+  .solution <- DBI::dbGetQuery(db_con, .solution_code)
+  
+  pass_if_equal()
+  fail()
+})
+  
+```
+
+### WHERE exercise 4
+
+Let's take a look at the `OR` operator now, which allows us to return
+rows that meet either Condition A or Condition B.
+
+Using the `OR` operator inside your `WHERE` clause, retrieve a list of
+countries with population figures from 2000 or 2001. Include the columns
+`country`, `year`, and `population`.
+
+```{sql db-exWhere4, exercise = TRUE, connection = "db_con", output.var="my_result", exercise.reveal_solution = FALSE}
+
+```
+
+```{sql db-exWhere4-solution}
+SELECT 
+  country,
+  year,
+  population
+FROM 
+  tblPopulation
+WHERE 
+  year = '2000' OR year = '2001'
+```
+
+```{r db-exWhere4-check}
+grade_this({
+  .solution <- DBI::dbGetQuery(db_con, .solution_code)
+  
+  pass_if_equal()
+  fail()
+})
+  
+```
+
+### WHERE exercise 5
+
+Using the `OR` operator can be tricky in any programming language, and
+SQL is no exception. Thanks to the order of operations, combining `AND`
+along with `OR` can create situations where you return more (or less)
+data than you intend.
+
+To mitigate this, we can place parentheses `(` and `)` around parts of
+our query. This has the effect of telling the database engine to
+evaluate the criteria contained within those parentheses separately.
+
+For this next exercise, experiment with running the query with **and
+without** the parentheses, and compare the results you get.
+
+Write a query that returns the Brazilian population figures for 2014 and
+2015. Include the columns `country`, `year`, and `population`.
+
+```{sql db-exWhere5, exercise = TRUE, connection = "db_con", output.var="my_result", exercise.reveal_solution = FALSE}
+
+```
+
+```{sql db-exWhere5-solution}
+SELECT 
+  country,
+  year,
+  population
+FROM 
+  tblPopulation
+WHERE 
+  country = 'Brazil'
+  AND (year = '2014' OR year = '2015')
+```
+
+```{r db-exWhere5-check}
+grade_this({
+  .solution <- DBI::dbGetQuery(db_con, .solution_code)
+  
+  pass_if_equal()
+  fail()
+})
+  
+```
+
+### WHERE exercise 6
+
+## SELECT \*
+
+## Quiz
